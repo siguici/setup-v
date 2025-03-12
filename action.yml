@@ -39,7 +39,7 @@ inputs:
     default: ''
     required: false
 
-  check-latest:
+  latest:
     description: 'Check for the latest available version'
     default: 'false'
     required: false
@@ -77,13 +77,15 @@ runs:
     - name: 🛠️ Prepare the environment
       uses: siguici/setup-env@v0
       with:
-        packages: 'git'
+        packages: 'git gh'
 
     - name: 📥 Clone Vlang repository
       shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
       run: |
         mkdir -p "${{ inputs.path }}"
-        git clone https://github.com/vlang/v "${{ inputs.path }}"
+        gh repo clone vlang/v "${{ inputs.path }}"
         cd "${{ inputs.path }}"
         if [[ -n "${{ inputs.version }}" ]]; then
           git checkout "${{ inputs.version }}"

@@ -43,7 +43,7 @@ jobs:
 | `token` | Personal access token (PAT) for fetching the repository | `${{ github.token }}` |
 | `version` | Specific V version to install (tag, branch, SHA) | `master` |
 | `version-file` | File containing the version to install | `''` |
-| `check-latest` | Check for the latest available version | `false` |
+| `latest` | Check for the latest available version | `false` |
 | `stable` | Install the latest stable version | `false` |
 | `architecture` | Target architecture (`linux`, `macos`, `windows`) | Auto-detected |
 
@@ -55,7 +55,6 @@ jobs:
 | `v-bin-path` | Direct path to the V binary |
 | `version` | Installed V version |
 | `architecture` | Architecture used for installation |
-
 
 ## 💡 Examples
 
@@ -87,6 +86,7 @@ jobs:
           path: $HOME/v
           install: true
           version-file: .v-version
+          latest: true
 
       - name: Show Installed Version
         run: v version

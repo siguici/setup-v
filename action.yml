@@ -119,6 +119,11 @@ runs:
         ./make.bat
         ./v.exe symlink
 
+    - name: 🔄 Update V if required
+      shell: bash
+      if: ${{ inputs.latest == 'true' }}
+      run: v up
+
     - name: 📦 Install V dependencies
       shell: bash
       if: ${{ inputs.install == 'true' }}

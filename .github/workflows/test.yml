@@ -27,4 +27,4 @@ jobs:
           install: true
           path: "$HOME/v"
           cwd: ./lab
-          latest: true
+          update: true

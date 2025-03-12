@@ -37,6 +37,7 @@ jobs:
 
 | Name | Description | Default |
 |------|------------|--------|
+| `update` | Update V after installation | `false` |
 | `install` | Install V dependencies | `false` |
 | `cwd`    | Directory in which to execute the commands | `.` |
 | `path` | Installation path for Vlang | `${{ runner.temp }}/v` |

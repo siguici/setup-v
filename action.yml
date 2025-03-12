@@ -14,6 +14,11 @@ inputs:
     default: '${{ runner.temp }}/v'
     required: false
 
+  update:
+    description: 'Update V after installation'
+    default: 'false'
+    required: false
+
   install:
     description: 'Install V dependencies'
     default: 'false'
@@ -121,7 +126,7 @@ runs:
 
     - name: 🔄 Update V if required
       shell: bash
-      if: ${{ inputs.latest == 'true' }}
+      if: ${{ inputs.update == 'true' }}
       run: v up
 
     - name: 📦 Install V dependencies

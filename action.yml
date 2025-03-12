@@ -82,18 +82,32 @@ runs:
     - name: 🛠️ Prepare the environment
       uses: siguici/setup-env@v0
       with:
-        packages: 'git gh'
+        packages: 'git gh jq'
 
-    - name: 📌 Determine Version
+    - name: 📌 Determine Vlang Version
       id: determine-version
       shell: bash
       working-directory: ${{ inputs.cwd }}
       run: |
         VERSION="${{ inputs.version }}"
+
+        if [[ "${{ inputs.latest }}" == "true" ]]; then
+          VERSION="latest"
+        fi
+
+        if [[ "${{ inputs.stable }}" == "true" ]]; then
+          VERSION=$(gh api repos/vlang/v/releases/latest | jq -r '.tag_name' | tr -d 'v')
+
+          if [[ -z "$VERSION" ]]; then
+            VERSION=$(gh release list --repo vlang/v --limit 1 --json tagName --jq '.[0].tagName' | tr -d 'v')
+          fi
+        fi
+
         if [[ -n "${{ inputs.version-file }}" && -f "${{ inputs.version-file }}" ]]; then
           VERSION=$(cat "${{ inputs.version-file }}" | tr -d '[:space:]')
           [[ "$VERSION" =~ ^v[0-9] ]] && VERSION=${VERSION:1}
         fi
+
         echo "V_VERSION=$VERSION" >> "$GITHUB_ENV"
 
     - name: 📥 Clone Vlang repository

@@ -79,6 +79,18 @@ runs:
       with:
         packages: 'git gh'
 
+    - name: 📌 Determine Version
+      id: determine-version
+      shell: bash
+      working-directory: ${{ inputs.cwd }}
+      run: |
+        VERSION="${{ inputs.version }}"
+        if [[ -n "${{ inputs.version-file }}" && -f "${{ inputs.version-file }}" ]]; then
+          VERSION=$(cat "${{ inputs.version-file }}" | tr -d '[:space:]')
+          [[ "$VERSION" =~ ^v[0-9] ]] && VERSION=${VERSION:1}
+        fi
+        echo "V_VERSION=$VERSION" >> "$GITHUB_ENV"
+
     - name: 📥 Clone Vlang repository
       shell: bash
       env:
@@ -87,8 +99,8 @@ runs:
         mkdir -p "${{ inputs.path }}"
         gh repo clone vlang/v "${{ inputs.path }}"
         cd "${{ inputs.path }}"
-        if [[ -n "${{ inputs.version }}" ]]; then
-          git checkout "${{ inputs.version }}"
+        if [[ -n "$V_VERSION" ]]; then
+          git checkout "$V_VERSION"
         fi
 
     - name: 🏗️ Build & Install Vlang on Unix

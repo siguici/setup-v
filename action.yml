@@ -140,7 +140,12 @@ runs:
     - name: 🔄 Update V if required
       shell: bash
       if: ${{ inputs.update == 'true' && env.V_VERSION != 'latest' }}
-      run: v up
+      run: |
+        if v help | grep -q "up"; then
+          v up
+        else
+          echo "⚠️ \`v up\` not available on this version, ignored."
+        fi
 
     - name: 📦 Install V dependencies
       shell: bash

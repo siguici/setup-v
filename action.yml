@@ -89,23 +89,22 @@ runs:
       shell: bash
       working-directory: ${{ inputs.cwd }}
       run: |
-        VERSION="${{ inputs.version }}"
+        VERSION="${{ inputs.version || 'latest' }}"
+
+        if [[ -n "${{ inputs.version-file }}" && -f "${{ inputs.version-file }}" ]]; then
+          VERSION=$(cat "${{ inputs.version-file }}" | tr -d '[:space:]')
+          [[ "$VERSION" =~ ^v[0-9] ]] && VERSION=${VERSION:1}
+        fi
 
         if [[ "${{ inputs.latest }}" == "true" ]]; then
           VERSION="latest"
         fi
 
-        if [[ "${{ inputs.stable }}" == "true" ]]; then
-          VERSION=$(gh api repos/vlang/v/releases/latest | jq -r '.tag_name' | tr -d 'v')
-
-          if [[ -z "$VERSION" ]]; then
-            VERSION=$(gh release list --repo vlang/v --limit 1 --json tagName --jq '.[0].tagName' | tr -d 'v')
+        if [[ "${{ inputs.stable }}" == "true" && "$VERSION" == "latest" ]]; then
+          VERSION=$(gh api repos/vlang/v/releases/latest --silent | jq -r '.tag_name' | tr -d 'v' || echo "")
+          if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
+            VERSION=$(gh release list --repo vlang/v --limit 1 --json tagName --jq '.[0].tagName' | tr -d 'v' || echo "")
           fi
-        fi
-
-        if [[ -n "${{ inputs.version-file }}" && -f "${{ inputs.version-file }}" ]]; then
-          VERSION=$(cat "${{ inputs.version-file }}" | tr -d '[:space:]')
-          [[ "$VERSION" =~ ^v[0-9] ]] && VERSION=${VERSION:1}
         fi
 
         echo "V_VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -116,9 +115,9 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
       run: |
         mkdir -p "${{ inputs.path }}"
-        gh repo clone vlang/v "${{ inputs.path }}"
+        gh repo clone vlang/v "${{ inputs.path }}" -- --depth=1
         cd "${{ inputs.path }}"
-        if [[ -n "$V_VERSION" ]]; then
+        if [[ -n "$V_VERSION" && "$V_VERSION" != "latest" ]]; then
           git checkout "$V_VERSION"
         fi
 
@@ -140,7 +139,7 @@ runs:
 
     - name: 🔄 Update V if required
       shell: bash
-      if: ${{ inputs.update == 'true' }}
+      if: ${{ inputs.update == 'true' && env.V_VERSION != 'latest' }}
       run: v up
 
     - name: 📦 Install V dependencies

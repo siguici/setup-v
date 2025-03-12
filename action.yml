@@ -103,11 +103,11 @@ runs:
       run: |
         cd "${{ inputs.path }}"
         ./make.bat
-        v.exe symlink
+        ./v.exe symlink
 
     - name: 📦 Install V dependencies
       shell: bash
-      if: inputs.install == "true"
+      if: ${{ inputs.install == 'true' }}
       working-directory: ${{ inputs.cwd }}
       run: |
         v install

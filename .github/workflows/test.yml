@@ -19,7 +19,7 @@ jobs:
       - name: 🚚 Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Test Environment
+      - name: Setup Vlang Environment
         uses: ./
         with:
           version: weekly.2025.11

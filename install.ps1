@@ -5,31 +5,54 @@ param (
     [string]$InstallDir = "$env:USERPROFILE\vlang"
 )
 
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 $ErrorActionPreference = "Stop"
-$CreatedDir = $false
 
 if (Get-Command v -ErrorAction SilentlyContinue) {
-    Write-Host "✅ Vlang is already installed! Skipping installation..." -ForegroundColor Green
+    Write-Host "✅ Vlang is already installed! Updating with 'v up'..." -ForegroundColor Green
+    Start-Process -NoNewWindow -Wait -FilePath "v" -ArgumentList "up"
     exit 0
 }
 
-if (-Not (Test-Path -Path $InstallDir)) {
+$InstallDir = [System.IO.Path]::GetFullPath($InstallDir)
+$InstallPath = "$InstallDir\v"
+
+if (Test-Path -Path $InstallPath) {
+    if (Test-Path -Path "$InstallPath\v.exe") {
+        Write-Host "🔗 Running 'v.exe symlink' in $InstallPath..."
+        Start-Process -NoNewWindow -Wait -FilePath "$InstallPath\v.exe" -ArgumentList "symlink"
+        exit 0
+    } elseif (Test-Path -Path "$InstallPath\make.bat") {
+        Write-Host "⚙️ Running 'make.bat' to build V..."
+        Start-Process -NoNewWindow -Wait -FilePath "$InstallPath\make.bat"
+        exit 0
+    }
+} else {
     Write-Host "📂 Creating installation directory: $InstallDir"
     New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
-    $CreatedDir = $true
 }
 
 function Get-LatestRelease {
     $url = "https://api.github.com/repos/vlang/v/releases/latest"
-    $response = Invoke-RestMethod -Uri $url
-    return $response.tag_name
+    try {
+        return (Invoke-RestMethod -Uri $url).tag_name
+    } catch {
+        Write-Host "❌ Failed to fetch latest release. Using 'latest'." -ForegroundColor Red
+        return "latest"
+    }
 }
 
 function Download-Vlang {
     param ([string]$url, [string]$outputPath)
 
     Write-Host "📥 Downloading Vlang from $url..."
-    Invoke-WebRequest -Uri $url -OutFile $outputPath -UseBasicParsing
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $outputPath -UseBasicParsing
+    } catch {
+        Write-Host "❌ Download failed! Check your internet connection." -ForegroundColor Red
+        exit 1
+    }
 }
 
 function Extract-Vlang {
@@ -50,20 +73,30 @@ function Install-Vlang {
     $zipPath = "$env:TEMP\$zipName"
 
     Download-Vlang -url $downloadUrl -outputPath $zipPath
-    Extract-Vlang -zipPath $zipPath -extractPath $InstallDir
 
+    if (Test-Path -Path $InstallDir) {
+        Write-Host "🗑️ Removing existing installation..."
+        Remove-Item -Recurse -Force -Path $InstallDir
+    }
+
+    Extract-Vlang -zipPath $zipPath -extractPath $InstallDir
     Remove-Item -Path $zipPath -Force
     Write-Host "🧹 Cleanup completed."
 
-    Set-Location -Path $InstallDir
+    Set-Location -Path $InstallPath
 
-    Write-Host "⚙️ Running `"make`" to build V..."
-    Start-Process -NoNewWindow -Wait -FilePath "cmd.exe" -ArgumentList "/c make"
+    if (Test-Path -Path "$InstallPath\make.bat") {
+        Write-Host "⚙️ Running 'make.bat' to build V..."
+        Start-Process -NoNewWindow -Wait -FilePath "$InstallPath\make.bat"
+    }
 
-    Write-Host "🔗 Creating symlink for V..."
-    Start-Process -NoNewWindow -Wait -FilePath "cmd.exe" -ArgumentList "/c v symlink"
+    Write-Host "🔗 Running 'v.exe symlink'..."
+    Start-Process -NoNewWindow -Wait -FilePath "$InstallPath\v.exe" -ArgumentList "symlink"
 
-    Write-Host "🎉 Vlang has been installed in $InstallDir! Restart your terminal to use `"v`"." -ForegroundColor Green
+    Write-Host "➕ Adding Vlang to system PATH..."
+    [System.Environment]::SetEnvironmentVariable("Path", $env:Path + ";$InstallPath", [System.EnvironmentVariableTarget]::Machine)
+
+    Write-Host "🎉 Vlang has been installed in $InstallPath! Restart your terminal to use `"v`"." -ForegroundColor Green
 }
 
 Install-Vlang

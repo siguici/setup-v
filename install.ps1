@@ -57,13 +57,13 @@ function Install-Vlang {
 
     Set-Location -Path $InstallDir
 
-    Write-Host "⚙️ Running 'make' to build V..."
+    Write-Host "⚙️ Running `"make`" to build V..."
     Start-Process -NoNewWindow -Wait -FilePath "cmd.exe" -ArgumentList "/c make"
 
     Write-Host "🔗 Creating symlink for V..."
     Start-Process -NoNewWindow -Wait -FilePath "cmd.exe" -ArgumentList "/c v symlink"
 
-    Write-Host "🎉 Vlang has been installed in $InstallDir! Restart your terminal to use ''v''." -ForegroundColor Green
+    Write-Host "🎉 Vlang has been installed in $InstallDir! Restart your terminal to use `"v`"." -ForegroundColor Green
 }
 
 Install-Vlang

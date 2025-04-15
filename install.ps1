@@ -6,7 +6,10 @@ param (
     [switch]$force,
     [switch]$quiet,
     [switch]$check,
-    [switch]$dryRun
+    [switch]$dryRun,
+    [switch]$update,
+    [switch]$link = $true,
+    [switch]$noLink
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -89,7 +92,7 @@ function Build-V {
 # Create the symlink for the V executable
 function Symlink-V {
     param ([string]$vExePath)
-    if (Test-Path $vExePath) {
+    if ($link -and (Test-Path $vExePath)) {
         Write-Log "🔗 Creating V executable symlink..."
         if (-not $dryRun) {
             Start-Process -NoNewWindow -Wait -FilePath $vExePath -ArgumentList "symlink"
@@ -172,6 +175,22 @@ if ($check) {
         & $vCmd.Source version
     } else {
         Write-Log "❌ V is not installed." Red
+    }
+    exit 0
+}
+
+# Handle update option
+if ($update) {
+    Write-Log "🔄 Running 'v up' to update V..."
+    $vCmd = Get-Command v -ErrorAction SilentlyContinue
+    if ($vCmd) {
+        if (-not $dryRun) {
+            Start-Process -NoNewWindow -Wait -FilePath $vCmd.Source -ArgumentList "up"
+        } else {
+            Write-Log "[dry-run] Would run 'v up'" Yellow
+        }
+    } else {
+        Write-Log "❌ V is not installed. Cannot run 'v up'." Red
     }
     exit 0
 }

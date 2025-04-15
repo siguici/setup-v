@@ -154,6 +154,20 @@ runs:
       run: |
         v install
 
+    - name: 🔍 Detect Architecture
+      id: detect-arch
+      shell: bash
+      run: |
+        ARCH="${{ inputs.architecture }}"
+        if [[ -z "$ARCH" ]]; then
+          case "$(uname -m)" in
+            x86_64) ARCH="amd64" ;;
+            aarch64) ARCH="arm64" ;;
+            *) ARCH="unknown" ;;
+          esac
+        fi
+        echo "ARCH=$ARCH" >> "$GITHUB_ENV"
+
     - name: 🔍 Get installed V version
       id: get-version
       shell: bash

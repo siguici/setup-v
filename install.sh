@@ -5,14 +5,23 @@ set -e
 VERSION="latest"
 INSTALL_DIR="$HOME/vlang"
 FORCE_INSTALL=false
+QUIET=false
+DRY_RUN=false
+CHECK_ONLY=false
+
 OS_TYPE="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 TMP_DIR="$(mktemp -d)"
 
-# Check dependencies ✅
-for cmd in curl unzip tar; do
-    command -v "$cmd" >/dev/null 2>&1 || { echo "❌ $cmd is required but not installed!"; exit 1; }
-done
+function log() {
+    if [ "$QUIET" = false ]; then
+        echo -e "$@"
+    fi
+}
+
+function error() {
+    echo -e "❌ $@" >&2
+}
 
 function get_latest_release() {
     curl -s "https://api.github.com/repos/vlang/v/releases/latest" | \
@@ -26,38 +35,55 @@ function get_asset_name() {
             case "$ARCH" in
                 "arm64") echo "v_macos_arm64.zip" ;;
                 "x86_64") echo "v_macos_x86_64.zip" ;;
-                *) echo "❌ Unsupported macOS architecture: $ARCH" && exit 1 ;;
+                *) error "Unsupported macOS architecture: $ARCH" && exit 1 ;;
             esac
         ;;
         "msys"|"mingw"|"cygwin") echo "v_windows.zip" ;;
-        *) echo "❌ Unsupported OS: $OS_TYPE" && exit 1 ;;
+        *) error "Unsupported OS: $OS_TYPE" && exit 1 ;;
     esac
+}
+
+function check_v_installed() {
+    if command -v v >/dev/null; then
+        V_VERSION=$(v version 2>/dev/null || echo "unknown")
+        log "✅ V is already installed: $V_VERSION"
+        return 0
+    else
+        log "❌ V is not installed."
+        return 1
+    fi
 }
 
 function download_vlang() {
     local url="$1"
     local output="$2"
-    echo "🌐 Downloading V from $url..."
-    curl -L -o "$output" "$url"
-    [[ -f "$output" ]] || { echo "❌ Download failed: $output not found!"; exit 1; }
+    log "🌐 Downloading V from $url..."
+    curl -sL -o "$output" "$url"
+    [[ -f "$output" ]] || { error "Download failed: $output not found!"; exit 1; }
 }
 
 function extract_vlang() {
     local archive="$1"
     local destination="$2"
-    echo "📦 Extracting V..."
+    log "📦 Extracting V..."
     mkdir -p "$destination"
     case "$archive" in
-        *.zip) unzip -o "$archive" -d "$destination" ;;
+        *.zip) unzip -o "$archive" -d "$destination" >/dev/null ;;
         *.tar.gz) tar -xzf "$archive" -C "$destination" ;;
-        *) echo "❌ Unsupported archive format: $archive" && exit 1 ;;
+        *) error "Unsupported archive format: $archive" && exit 1 ;;
     esac
 }
 
 function install_vlang() {
-    if [[ -d "$INSTALL_DIR" && "$FORCE_INSTALL" == false ]]; then
-        echo "ℹ️ V is already installed in $INSTALL_DIR. Use --force to reinstall."
-        return 0
+    # CHECK mode
+    if [[ "$CHECK_ONLY" = true ]]; then
+        check_v_installed && exit 0 || exit 1
+    fi
+
+    # SKIP if already installed
+    if [[ -d "$INSTALL_DIR" && "$FORCE_INSTALL" = false ]]; then
+        log "ℹ️ V is already installed in $INSTALL_DIR. Use --force to reinstall."
+        exit 0
     fi
 
     if [[ "$VERSION" == "latest" ]]; then
@@ -68,37 +94,51 @@ function install_vlang() {
     DOWNLOAD_URL="https://github.com/vlang/v/releases/download/$VERSION/$ASSET_NAME"
     TEMP_FILE="$TMP_DIR/$ASSET_NAME"
 
+    # DRY-RUN mode
+    if [[ "$DRY_RUN" = true ]]; then
+        log "🔍 Dry run:"
+        log " - Target version: $VERSION"
+        log " - Install dir: $INSTALL_DIR"
+        log " - Download URL: $DOWNLOAD_URL"
+        log " - Asset: $ASSET_NAME"
+        log " - Force install: $FORCE_INSTALL"
+        exit 0
+    fi
+
+    # Start installation
     download_vlang "$DOWNLOAD_URL" "$TEMP_FILE"
 
-    [[ "$FORCE_INSTALL" == true && -d "$INSTALL_DIR" ]] && echo "♻️ Cleaning existing installation..." && rm -rf "$INSTALL_DIR"
+    [[ "$FORCE_INSTALL" = true && -d "$INSTALL_DIR" ]] && log "♻️ Removing old install..." && rm -rf "$INSTALL_DIR"
     extract_vlang "$TEMP_FILE" "$INSTALL_DIR"
 
     if [[ -f "$INSTALL_DIR/v" ]]; then
-        echo "🔧 Linking V to system path..."
-        (cd "$INSTALL_DIR" && ./v symlink)
+        log "🔧 Linking V to system path..."
+        (cd "$INSTALL_DIR" && ./v symlink >/dev/null)
     else
-        echo "❌ Error: V binary not found after extraction!"
+        error "V binary not found after extraction!"
         exit 1
     fi
 
     if command -v v >/dev/null; then
-        echo "✅ V is successfully installed! Run: v version"
+        log "✅ V $VERSION installed successfully! Run: v version"
     else
-        echo "⚠️ V is installed but not in your PATH."
-        echo "👉 Add to your PATH manually or restart your terminal."
+        log "⚠️ V is installed but not in your PATH."
+        log "👉 Add to your PATH manually or restart your terminal."
     fi
 
-    # Cleanup
     rm -rf "$TMP_DIR"
 }
 
 # Parse args
 while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        --version) [[ -n "$2" ]] && VERSION="$2" || { echo "❌ Missing argument for --version"; exit 1; }; shift ;;
-        --dir) [[ -n "$2" ]] && INSTALL_DIR="$2" || { echo "❌ Missing argument for --dir"; exit 1; }; shift ;;
+    case "$1" in
+        --version) VERSION="$2"; shift ;;
+        --dir) INSTALL_DIR="$2"; shift ;;
         --force) FORCE_INSTALL=true ;;
-        *) echo "⚠️ Unknown option: $1"; exit 1 ;;
+        --quiet) QUIET=true ;;
+        --check) CHECK_ONLY=true ;;
+        --dry-run) DRY_RUN=true ;;
+        *) error "Unknown option: $1"; exit 1 ;;
     esac
     shift
 done

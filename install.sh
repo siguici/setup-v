@@ -4,6 +4,7 @@ set -e
 
 VERSION="latest"
 INSTALL_DIR="$HOME/vlang"
+FORCE_INSTALL=false
 OS_TYPE="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 TMP_DIR="$(mktemp -d)"
@@ -54,6 +55,11 @@ function extract_vlang() {
 }
 
 function install_vlang() {
+    if [[ -d "$INSTALL_DIR" && "$FORCE_INSTALL" == false ]]; then
+        echo "ℹ️ V is already installed in $INSTALL_DIR. Use --force to reinstall."
+        return 0
+    fi
+
     if [[ "$VERSION" == "latest" ]]; then
         VERSION=$(get_latest_release)
     fi
@@ -63,9 +69,10 @@ function install_vlang() {
     TEMP_FILE="$TMP_DIR/$ASSET_NAME"
 
     download_vlang "$DOWNLOAD_URL" "$TEMP_FILE"
+
+    [[ "$FORCE_INSTALL" == true && -d "$INSTALL_DIR" ]] && echo "♻️ Cleaning existing installation..." && rm -rf "$INSTALL_DIR"
     extract_vlang "$TEMP_FILE" "$INSTALL_DIR"
 
-    # Run the install script if present
     if [[ -f "$INSTALL_DIR/v" ]]; then
         echo "🔧 Linking V to system path..."
         (cd "$INSTALL_DIR" && ./v symlink)
@@ -81,7 +88,7 @@ function install_vlang() {
         echo "👉 Add to your PATH manually or restart your terminal."
     fi
 
-    # Clean up
+    # Cleanup
     rm -rf "$TMP_DIR"
 }
 
@@ -90,6 +97,7 @@ while [[ "$#" -gt 0 ]]; do
     case $1 in
         --version) [[ -n "$2" ]] && VERSION="$2" || { echo "❌ Missing argument for --version"; exit 1; }; shift ;;
         --dir) [[ -n "$2" ]] && INSTALL_DIR="$2" || { echo "❌ Missing argument for --dir"; exit 1; }; shift ;;
+        --force) FORCE_INSTALL=true ;;
         *) echo "⚠️ Unknown option: $1"; exit 1 ;;
     esac
     shift

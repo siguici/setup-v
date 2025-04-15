@@ -58,7 +58,7 @@ param (
 )
 
 # Show help message
-if ($help) {
+if ($help -or $args -contains '-?') {
     Write-Host @"
 Vlang Installer Script
 

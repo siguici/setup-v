@@ -44,7 +44,12 @@ function Download-Vlang {
     )
     Write-Log "📥 Downloading V from $url..."
     if (-not $dryRun) {
-        Invoke-WebRequest -Uri $url -OutFile $destination -UseBasicParsing
+        try {
+            Invoke-WebRequest -Uri $url -OutFile $destination -UseBasicParsing
+        } catch {
+            Write-Log "❌ Download failed. Check your internet connection." Red
+            exit 1
+        }
     } else {
         Write-Log "[dry-run] Would download V from $url to $destination" Yellow
     }

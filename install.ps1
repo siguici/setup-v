@@ -12,6 +12,7 @@ param (
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 
+# Ensure the script is run as Administrator
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Warning "⚠️ This script must be run as Administrator!"
     exit 1
@@ -27,6 +28,7 @@ function Write-Log {
     }
 }
 
+# Get the latest version from GitHub API
 function Get-LatestVersion {
     $url = "https://api.github.com/repos/vlang/v/releases/latest"
     try {
@@ -37,6 +39,7 @@ function Get-LatestVersion {
     }
 }
 
+# Download V from the provided URL
 function Download-Vlang {
     param (
         [string]$url,
@@ -55,6 +58,7 @@ function Download-Vlang {
     }
 }
 
+# Extract the downloaded V package
 function Extract-Vlang {
     param (
         [string]$archivePath,
@@ -68,19 +72,21 @@ function Extract-Vlang {
     }
 }
 
+# Build V using the make.bat script
 function Build-V {
     param ([string]$path)
     $makePath = Join-Path $path "make.bat"
     if (Test-Path $makePath) {
         Write-Log "⚙️ Building V using make.bat..."
         if (-not $dryRun) {
-            Start-Process -NoNewWindow -Wait -FilePath $makePath
+            Start-Process -NoNewWindow -Wait -FilePath $makePath -ArgumentList "/NoLogo"
         } else {
             Write-Log "[dry-run] Would run make.bat in $path" Yellow
         }
     }
 }
 
+# Create the symlink for the V executable
 function Symlink-V {
     param ([string]$vExePath)
     if (Test-Path $vExePath) {
@@ -93,6 +99,7 @@ function Symlink-V {
     }
 }
 
+# Update the system PATH variable to include Vlang
 function Update-SystemPath {
     param ([string]$vPath)
     Write-Log "➕ Adding V to system PATH..."
@@ -103,6 +110,7 @@ function Update-SystemPath {
     }
 }
 
+# Install Vlang
 function Install-Vlang {
     if ($version -eq "latest") {
         Write-Log "🔍 Fetching latest V version..."
@@ -230,7 +238,10 @@ if (-not ($env:Path -like "*$installDir*")) {
         }
     }
     if (-not $dryRun) {
-        Add-Content $profilePath "`$env:Path += `";$InstallDir`""
+        # Ensure no duplicates in the profile file
+        if (-not (Get-Content $profilePath | Select-String -Pattern $installDir)) {
+            Add-Content $profilePath "`$env:Path += `";$installDir`""
+        }
     } else {
         Write-Log "[dry-run] Would add Vlang to PowerShell profile" Yellow
     }

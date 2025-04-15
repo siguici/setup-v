@@ -12,8 +12,8 @@ param (
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 
-if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
-    [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+# Verify if the script is running with Administrator privileges
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Warning "⚠️ This script must be run as Administrator!"
     exit 1
 }
@@ -113,6 +113,11 @@ function Install-Vlang {
         }
     }
 
+    Write-Log "📁 Creating installation directory: $installDir"
+    if (-not $dryRun) {
+        New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+    }
+
     Extract-Vlang -archivePath $tempZipPath -targetPath $installDir
 
     if (-not $dryRun) {
@@ -133,6 +138,16 @@ $installDir = [System.IO.Path]::GetFullPath($installDir)
 $vPath = Join-Path $installDir "v"
 $vExePath = Join-Path $vPath "v.exe"
 
+# Check if version is already installed
+if ((Test-Path "$installDir\vlang.version") -and (-not $force)) {
+    $installedVersion = Get-Content "$installDir\vlang.version"
+    if ($installedVersion -eq $version) {
+        Write-Log "🆗 Version $version is already installed. Nothing to do."
+        exit 0
+    }
+}
+
+# Handle --check flag
 if ($check) {
     $vCmd = Get-Command v -ErrorAction SilentlyContinue
     if ($vCmd) {
@@ -144,6 +159,12 @@ if ($check) {
     exit 0
 }
 
+# Handle --force flag
+if ($force) {
+    Write-Log "🧨 Force mode enabled — reinstalling Vlang..." Yellow
+}
+
+# Check if V is already installed
 $vInstalled = Get-Command v -ErrorAction SilentlyContinue
 if ($vInstalled -and -not $force) {
     Write-Log "✅ V is already installed. Running 'v up'..." Green
@@ -153,22 +174,35 @@ if ($vInstalled -and -not $force) {
     exit 0
 }
 
-if (Test-Path $vExePath) {
-    Symlink-V -vExePath $vExePath
-    exit 0
+Install-Vlang
+
+# Create vlang version file
+"$version" | Out-File -Encoding UTF8 -FilePath "$installDir\vlang.version"
+
+# Test the executable after installation
+try {
+    & "$installDir\v.exe" version
+} catch {
+    Write-Error "❌ Something went wrong. V executable could not run."
+    exit 1
 }
 
-$makeFilePath = Join-Path $vPath "make.bat"
-if (Test-Path $makeFilePath) {
-    Build-V -path $vPath
-    exit 0
-}
-
-if (-not (Test-Path $installDir)) {
-    Write-Log "📁 Creating installation directory: $installDir"
+# Cleanup .vmodules cache if necessary
+$cacheDir = "$env:USERPROFILE\.vmodules"
+if (Test-Path $cacheDir) {
+    Write-Log "🧼 Deleting .vmodules cache..."
     if (-not $dryRun) {
-        New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+        Remove-Item -Recurse -Force -Path $cacheDir
     }
 }
 
-Install-Vlang
+# Add to profile if necessary
+if (-not ($env:Path -like "*$installDir*")) {
+    $profilePath = "$env:USERPROFILE\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
+    if (-not (Test-Path $profilePath)) {
+        New-Item -ItemType File -Path $profilePath -Force | Out-Null
+    }
+    Add-Content $profilePath "`$env:Path += `";$InstallDir`""
+    Write-Log "🛠️ Added Vlang to your PowerShell profile (for future sessions)."
+}
+

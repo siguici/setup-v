@@ -12,7 +12,6 @@ param (
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 
-# Verify if the script is running with Administrator privileges
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Warning "⚠️ This script must be run as Administrator!"
     exit 1
@@ -45,12 +44,9 @@ function Download-Vlang {
     )
     Write-Log "📥 Downloading V from $url..."
     if (-not $dryRun) {
-        try {
-            Invoke-WebRequest -Uri $url -OutFile $destination -UseBasicParsing
-        } catch {
-            Write-Log "❌ Download failed. Check your internet connection." Red
-            exit 1
-        }
+        Invoke-WebRequest -Uri $url -OutFile $destination -UseBasicParsing
+    } else {
+        Write-Log "[dry-run] Would download V from $url to $destination" Yellow
     }
 }
 
@@ -62,6 +58,8 @@ function Extract-Vlang {
     Write-Log "📦 Extracting V to $targetPath..."
     if (-not $dryRun) {
         Expand-Archive -Path $archivePath -DestinationPath $targetPath -Force
+    } else {
+        Write-Log "[dry-run] Would extract $archivePath to $targetPath" Yellow
     }
 }
 
@@ -72,6 +70,8 @@ function Build-V {
         Write-Log "⚙️ Building V using make.bat..."
         if (-not $dryRun) {
             Start-Process -NoNewWindow -Wait -FilePath $makePath
+        } else {
+            Write-Log "[dry-run] Would run make.bat in $path" Yellow
         }
     }
 }
@@ -82,6 +82,8 @@ function Symlink-V {
         Write-Log "🔗 Creating V executable symlink..."
         if (-not $dryRun) {
             Start-Process -NoNewWindow -Wait -FilePath $vExePath -ArgumentList "symlink"
+        } else {
+            Write-Log "[dry-run] Would run 'v.exe symlink'" Yellow
         }
     }
 }
@@ -91,6 +93,8 @@ function Update-SystemPath {
     Write-Log "➕ Adding V to system PATH..."
     if (-not $dryRun) {
         [System.Environment]::SetEnvironmentVariable("Path", $env:Path + ";$vPath", [System.EnvironmentVariableTarget]::Machine)
+    } else {
+        Write-Log "[dry-run] Would add $vPath to system PATH" Yellow
     }
 }
 
@@ -110,17 +114,21 @@ function Install-Vlang {
         Write-Log "🗑️ Removing previous installation from $installDir..."
         if (-not $dryRun) {
             Remove-Item -Recurse -Force -Path $installDir
+        } else {
+            Write-Log "[dry-run] Would remove $installDir" Yellow
         }
     }
 
     Write-Log "📁 Creating installation directory: $installDir"
     if (-not $dryRun) {
         New-Item -ItemType Directory -Path $installDir -Force | Out-Null
+    } else {
+        Write-Log "[dry-run] Would create directory $installDir" Yellow
     }
 
     Extract-Vlang -archivePath $tempZipPath -targetPath $installDir
 
-    if (-not $dryRun) {
+    if (-not $dryRun -and (Test-Path $tempZipPath)) {
         Remove-Item -Path $tempZipPath -Force
     }
 
@@ -128,6 +136,12 @@ function Install-Vlang {
     Build-V -path $vPath
     Symlink-V -vExePath (Join-Path $vPath "v.exe")
     Update-SystemPath -vPath $vPath
+
+    if (-not $dryRun) {
+        "$version" | Out-File -Encoding UTF8 -FilePath "$installDir\vlang.version"
+    } else {
+        Write-Log "[dry-run] Would write version file to $installDir\vlang.version" Yellow
+    }
 
     Write-Log "✅ Vlang has been installed to $vPath. Restart your terminal to begin using 'v'." Green
 }
@@ -138,16 +152,6 @@ $installDir = [System.IO.Path]::GetFullPath($installDir)
 $vPath = Join-Path $installDir "v"
 $vExePath = Join-Path $vPath "v.exe"
 
-# Check if version is already installed
-if ((Test-Path "$installDir\vlang.version") -and (-not $force)) {
-    $installedVersion = Get-Content "$installDir\vlang.version"
-    if ($installedVersion -eq $version) {
-        Write-Log "🆗 Version $version is already installed. Nothing to do."
-        exit 0
-    }
-}
-
-# Handle --check flag
 if ($check) {
     $vCmd = Get-Command v -ErrorAction SilentlyContinue
     if ($vCmd) {
@@ -159,7 +163,16 @@ if ($check) {
     exit 0
 }
 
-# Handle --force flag
+# Check if version is already installed
+if ((Test-Path "$installDir\vlang.version") -and (-not $force)) {
+    $installedVersion = Get-Content "$installDir\vlang.version"
+    if ($installedVersion -eq $version) {
+        Write-Log "🆗 Version $version is already installed. Nothing to do."
+        exit 0
+    }
+}
+
+# Handle --force
 if ($force) {
     Write-Log "🧨 Force mode enabled — reinstalling Vlang..." Yellow
 }
@@ -170,39 +183,51 @@ if ($vInstalled -and -not $force) {
     Write-Log "✅ V is already installed. Running 'v up'..." Green
     if (-not $dryRun) {
         Start-Process -NoNewWindow -Wait -FilePath $vInstalled.Source -ArgumentList "up"
+    } else {
+        Write-Log "[dry-run] Would run 'v up'" Yellow
     }
     exit 0
 }
 
 Install-Vlang
 
-# Create vlang version file
-"$version" | Out-File -Encoding UTF8 -FilePath "$installDir\vlang.version"
-
-# Test the executable after installation
-try {
-    & "$installDir\v.exe" version
-} catch {
-    Write-Error "❌ Something went wrong. V executable could not run."
-    exit 1
+# Post-install: test V
+if (-not $dryRun) {
+    try {
+        & "$vExePath" version
+    } catch {
+        Write-Error "❌ Something went wrong. V executable could not run."
+        exit 1
+    }
+} else {
+    Write-Log "[dry-run] Would run '$vExePath version'" Yellow
 }
 
-# Cleanup .vmodules cache if necessary
+# Cleanup .vmodules
 $cacheDir = "$env:USERPROFILE\.vmodules"
 if (Test-Path $cacheDir) {
     Write-Log "🧼 Deleting .vmodules cache..."
     if (-not $dryRun) {
         Remove-Item -Recurse -Force -Path $cacheDir
+    } else {
+        Write-Log "[dry-run] Would delete $cacheDir" Yellow
     }
 }
 
-# Add to profile if necessary
+# Add to PowerShell profile
 if (-not ($env:Path -like "*$installDir*")) {
     $profilePath = "$env:USERPROFILE\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
     if (-not (Test-Path $profilePath)) {
-        New-Item -ItemType File -Path $profilePath -Force | Out-Null
+        if (-not $dryRun) {
+            New-Item -ItemType File -Path $profilePath -Force | Out-Null
+        } else {
+            Write-Log "[dry-run] Would create PowerShell profile at $profilePath" Yellow
+        }
     }
-    Add-Content $profilePath "`$env:Path += `";$InstallDir`""
+    if (-not $dryRun) {
+        Add-Content $profilePath "`$env:Path += `";$InstallDir`""
+    } else {
+        Write-Log "[dry-run] Would add Vlang to PowerShell profile" Yellow
+    }
     Write-Log "🛠️ Added Vlang to your PowerShell profile (for future sessions)."
 }
-

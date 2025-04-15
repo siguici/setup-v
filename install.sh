@@ -11,6 +11,7 @@ CHECK_ONLY=false
 UPDATE_ONLY=false
 FORCE_LINK=false
 SKIP_LINK=false
+HELP=false
 
 OS_TYPE="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
@@ -192,10 +193,33 @@ while [[ "$#" -gt 0 ]]; do
         --update) UPDATE_ONLY=true ;;
         --link) FORCE_LINK=true ;;
         --no-link) SKIP_LINK=true ;;
+        --help) HELP=true ;;
         *) error "Unknown option: $1"; exit 1 ;;
     esac
     shift
 done
+
+if [[ "$HELP" = true ]]; then
+    printf "Vlang Installer Script
+
+USAGE:
+    ./install.sh [--version <version>] [--dir <path>] [--force] [--quiet]
+                  [--dry-run] [--check] [--update] [--link] [--no-link] [--help]
+
+OPTIONS:
+    --version      Specify version to install (default: latest)
+    --dir          Directory to install Vlang (default: \$HOME/vlang)
+    --force        Force reinstall even if already installed
+    --quiet        Suppress log output
+    --dry-run      Simulate actions without making changes
+    --check        Show current installed version of Vlang
+    --update       Run 'v up' to update Vlang
+    --link         Create symlink to 'v' (enabled by default)
+    --no-link      Disable symlink creation
+    --help         Show this help message
+"
+    exit 0
+fi
 
 if [[ "$FORCE_LINK" = true && "$SKIP_LINK" = true ]]; then
     error "--link and --no-link cannot be used together."

@@ -57,7 +57,7 @@ function check_v_installed() {
 function download_vlang() {
     local url="$1"
     local output="$2"
-    log "🌐 Downloading V from $url..."
+    log "📥 Downloading V from $url..."
     curl -sL -o "$output" "$url"
     [[ -f "$output" ]] || { error "Download failed: $output not found!"; exit 1; }
 }
@@ -108,7 +108,11 @@ function install_vlang() {
     # Start installation
     download_vlang "$DOWNLOAD_URL" "$TEMP_FILE"
 
-    [[ "$FORCE_INSTALL" = true && -d "$INSTALL_DIR" ]] && log "♻️ Removing old install..." && rm -rf "$INSTALL_DIR"
+    # Remove previous installation if forced
+    if [[ "$FORCE_INSTALL" = true && -d "$INSTALL_DIR" ]]; then
+        log "♻️ Removing old install..."
+        rm -rf "$INSTALL_DIR"
+    fi
     extract_vlang "$TEMP_FILE" "$INSTALL_DIR"
 
     if [[ -f "$INSTALL_DIR/v" ]]; then
@@ -129,6 +133,13 @@ function install_vlang() {
     rm -rf "$TMP_DIR"
 }
 
+# Validate if required tools are installed
+function validate_tools() {
+    for cmd in curl unzip tar; do
+        command -v "$cmd" >/dev/null || { error "$cmd is not installed."; exit 1; }
+    done
+}
+
 # Parse args
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -143,4 +154,8 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+# Validate tools
+validate_tools
+
+# Start installation
 install_vlang

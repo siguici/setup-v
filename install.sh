@@ -54,6 +54,13 @@ function check_v_installed() {
     fi
 }
 
+function get_installed_version() {
+    local v_bin="$INSTALL_DIR/v/v"
+    if [[ -x "$v_bin" ]]; then
+        "$v_bin" version 2>/dev/null | awk '{print $2}'
+    fi
+}
+
 function download_vlang() {
     local url="$1"
     local output="$2"
@@ -88,13 +95,24 @@ function install_vlang() {
 
     local V_DIR="$INSTALL_DIR/v"
 
-    if [[ -d "$V_DIR" && "$FORCE_INSTALL" = false ]]; then
-        log "ℹ️ V is already installed in $V_DIR. Use --force to reinstall."
+    if [[ "$VERSION" == "latest" ]]; then
+        VERSION=$(get_latest_release)
+    fi
+
+    local CURRENT_VERSION=""
+    if [[ -x "$V_DIR/v" ]]; then
+        CURRENT_VERSION=$(get_installed_version)
+    fi
+
+    if [[ -n "$CURRENT_VERSION" && "$CURRENT_VERSION" == "$VERSION" && "$FORCE_INSTALL" = false ]]; then
+        log "✅ V $VERSION is already installed in $V_DIR. Use --force to reinstall."
         exit 0
     fi
 
-    if [[ "$VERSION" == "latest" ]]; then
-        VERSION=$(get_latest_release)
+    if [[ "$CURRENT_VERSION" != "$VERSION" && -n "$CURRENT_VERSION" && "$FORCE_INSTALL" = false ]]; then
+        log "🔁 V $CURRENT_VERSION is installed, but version $VERSION is requested."
+        log "👉 Use --force to reinstall with version $VERSION."
+        exit 0
     fi
 
     ASSET_NAME=$(get_asset_name)
@@ -111,14 +129,22 @@ function install_vlang() {
         exit 0
     fi
 
-    download_vlang "$DOWNLOAD_URL" "$TEMP_FILE"
+    if [[ -f "$TEMP_FILE" ]]; then
+        log "📦 Archive already downloaded: $TEMP_FILE"
+    else
+        download_vlang "$DOWNLOAD_URL" "$TEMP_FILE"
+    fi
 
     if [[ "$FORCE_INSTALL" = true && -d "$V_DIR" ]]; then
         log "♻️ Removing old install at $V_DIR..."
         rm -rf "$V_DIR"
     fi
 
-    extract_vlang "$TEMP_FILE" "$INSTALL_DIR"
+    if [[ -x "$V_DIR/v" ]]; then
+        log "📂 V already extracted to $V_DIR"
+    else
+        extract_vlang "$TEMP_FILE" "$INSTALL_DIR"
+    fi
 
     if [[ -f "$V_DIR/v" ]]; then
         log "🔧 Linking V to system path..."

@@ -8,6 +8,9 @@ FORCE_INSTALL=false
 QUIET=false
 DRY_RUN=false
 CHECK_ONLY=false
+UPDATE_ONLY=false
+FORCE_LINK=false
+SKIP_LINK=false
 
 OS_TYPE="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
@@ -104,14 +107,15 @@ function install_vlang() {
         CURRENT_VERSION=$(get_installed_version)
     fi
 
-    if [[ -n "$CURRENT_VERSION" && "$CURRENT_VERSION" == "$VERSION" && "$FORCE_INSTALL" = false ]]; then
+    if [[ "$UPDATE_ONLY" = true ]]; then
+        if [[ "$VERSION" == "$CURRENT_VERSION" ]]; then
+            log "✅ V is already up to date: $VERSION"
+            exit 0
+        else
+            log "🔄 Updating from $CURRENT_VERSION to $VERSION..."
+        fi
+    elif [[ "$CURRENT_VERSION" == "$VERSION" && "$FORCE_INSTALL" = false ]]; then
         log "✅ V $VERSION is already installed in $V_DIR. Use --force to reinstall."
-        exit 0
-    fi
-
-    if [[ "$CURRENT_VERSION" != "$VERSION" && -n "$CURRENT_VERSION" && "$FORCE_INSTALL" = false ]]; then
-        log "🔁 V $CURRENT_VERSION is installed, but version $VERSION is requested."
-        log "👉 Use --force to reinstall with version $VERSION."
         exit 0
     fi
 
@@ -124,8 +128,10 @@ function install_vlang() {
         log " - Target version: $VERSION"
         log " - Install dir: $INSTALL_DIR"
         log " - Download URL: $DOWNLOAD_URL"
-        log " - Asset: $ASSET_NAME"
         log " - Force install: $FORCE_INSTALL"
+        log " - Update only: $UPDATE_ONLY"
+        log " - Link: $FORCE_LINK"
+        log " - No link: $SKIP_LINK"
         exit 0
     fi
 
@@ -147,8 +153,12 @@ function install_vlang() {
     fi
 
     if [[ -f "$V_DIR/v" ]]; then
-        log "🔧 Linking V to system path..."
-        (cd "$V_DIR" && sudo ./v symlink >/dev/null)
+        if [[ "$SKIP_LINK" = false ]]; then
+            log "🔧 Linking V to system path..."
+            sudo "$V_DIR/v" symlink >/dev/null
+        else
+            log "🚫 Skipping symlink creation (use --link to force)"
+        fi
     else
         error "V binary not found in $V_DIR after extraction!"
         exit 1
@@ -179,10 +189,18 @@ while [[ "$#" -gt 0 ]]; do
         --quiet) QUIET=true ;;
         --check) CHECK_ONLY=true ;;
         --dry-run) DRY_RUN=true ;;
+        --update) UPDATE_ONLY=true ;;
+        --link) FORCE_LINK=true ;;
+        --no-link) SKIP_LINK=true ;;
         *) error "Unknown option: $1"; exit 1 ;;
     esac
     shift
 done
+
+if [[ "$FORCE_LINK" = true && "$SKIP_LINK" = true ]]; then
+    error "--link and --no-link cannot be used together."
+    exit 1
+fi
 
 validate_tools
 install_vlang

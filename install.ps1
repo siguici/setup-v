@@ -38,6 +38,9 @@
 .PARAMETER noLink
     Does not create a symbolic link for the executable after installation.
 
+.PARAMETER help
+    Displays usage help and exits.
+
 #>
 
 
@@ -50,8 +53,33 @@ param (
     [switch]$dryRun,
     [switch]$update,
     [switch]$link = $true,
-    [switch]$noLink
+    [switch]$noLink,
+    [switch]$help
 )
+
+# Show help message
+if ($help) {
+    Write-Host @"
+Vlang Installer Script
+
+USAGE:
+    .\install.ps1 [-version <version>] [-installDir <path>] [-force] [-quiet]
+                  [-dryRun] [-check] [-update] [-link] [-noLink] [-help]
+
+OPTIONS:
+    -version     Specify version to install (default: latest)
+    -installDir  Directory to install Vlang (default: $env:USERPROFILE\vlang)
+    -force       Force reinstall even if already installed
+    -quiet       Suppress log output
+    -dryRun      Simulate actions without making changes
+    -check       Show current installed version of Vlang
+    -update      Run 'v up' to update Vlang
+    -link        Create symlink to 'v' (enabled by default)
+    -noLink      Disable symlink creation
+    -help        Show this help message
+"@
+    exit 0
+}
 
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

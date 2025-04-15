@@ -3,7 +3,7 @@
 set -e
 
 VERSION="latest"
-INSTALL_DIR="$HOME/vlang"
+INSTALL_DIR="$HOME"
 FORCE_INSTALL=false
 QUIET=false
 DRY_RUN=false
@@ -31,7 +31,7 @@ function get_latest_release() {
 function get_asset_name() {
     case "$OS_TYPE" in
         "linux") echo "v_linux.zip" ;;
-        "darwin") 
+        "darwin")
             case "$ARCH" in
                 "arm64") echo "v_macos_arm64.zip" ;;
                 "x86_64") echo "v_macos_x86_64.zip" ;;
@@ -65,24 +65,31 @@ function download_vlang() {
 function extract_vlang() {
     local archive="$1"
     local destination="$2"
-    log "📦 Extracting V..."
-    mkdir -p "$destination"
+    log "📦 Extracting V into $destination..."
+
     case "$archive" in
         *.zip) unzip -o "$archive" -d "$destination" >/dev/null ;;
         *.tar.gz) tar -xzf "$archive" -C "$destination" ;;
         *) error "Unsupported archive format: $archive" && exit 1 ;;
     esac
+
+    if [[ -d "$destination/v" ]]; then
+        log "📂 V extracted to $destination/v"
+    else
+        error "❌ Expected 'v' directory not found after extraction!"
+        exit 1
+    fi
 }
 
 function install_vlang() {
-    # CHECK mode
     if [[ "$CHECK_ONLY" = true ]]; then
         check_v_installed && exit 0 || exit 1
     fi
 
-    # SKIP if already installed
-    if [[ -d "$INSTALL_DIR" && "$FORCE_INSTALL" = false ]]; then
-        log "ℹ️ V is already installed in $INSTALL_DIR. Use --force to reinstall."
+    local V_DIR="$INSTALL_DIR/v"
+
+    if [[ -d "$V_DIR" && "$FORCE_INSTALL" = false ]]; then
+        log "ℹ️ V is already installed in $V_DIR. Use --force to reinstall."
         exit 0
     fi
 
@@ -94,7 +101,6 @@ function install_vlang() {
     DOWNLOAD_URL="https://github.com/vlang/v/releases/download/$VERSION/$ASSET_NAME"
     TEMP_FILE="$TMP_DIR/$ASSET_NAME"
 
-    # DRY-RUN mode
     if [[ "$DRY_RUN" = true ]]; then
         log "🔍 Dry run:"
         log " - Target version: $VERSION"
@@ -105,21 +111,20 @@ function install_vlang() {
         exit 0
     fi
 
-    # Start installation
     download_vlang "$DOWNLOAD_URL" "$TEMP_FILE"
 
-    # Remove previous installation if forced
-    if [[ "$FORCE_INSTALL" = true && -d "$INSTALL_DIR" ]]; then
-        log "♻️ Removing old install..."
-        rm -rf "$INSTALL_DIR"
+    if [[ "$FORCE_INSTALL" = true && -d "$V_DIR" ]]; then
+        log "♻️ Removing old install at $V_DIR..."
+        rm -rf "$V_DIR"
     fi
+
     extract_vlang "$TEMP_FILE" "$INSTALL_DIR"
 
-    if [[ -f "$INSTALL_DIR/v" ]]; then
+    if [[ -f "$V_DIR/v" ]]; then
         log "🔧 Linking V to system path..."
-        (cd "$INSTALL_DIR" && ./v symlink >/dev/null)
+        (cd "$V_DIR" && sudo ./v symlink >/dev/null)
     else
-        error "V binary not found after extraction!"
+        error "V binary not found in $V_DIR after extraction!"
         exit 1
     fi
 
@@ -133,7 +138,6 @@ function install_vlang() {
     rm -rf "$TMP_DIR"
 }
 
-# Validate if required tools are installed
 function validate_tools() {
     for cmd in curl unzip tar; do
         command -v "$cmd" >/dev/null || { error "$cmd is not installed."; exit 1; }
@@ -154,8 +158,5 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# Validate tools
 validate_tools
-
-# Start installation
 install_vlang

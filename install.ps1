@@ -1,4 +1,45 @@
-﻿#requires -RunAsAdministrator
+﻿#!/usr/bin/env pwsh
+#requires -RunAsAdministrator
+<#
+.SYNOPSIS
+    Vlang installation and update script.
+
+.DESCRIPTION
+    This script installs and updates Vlang (the V programming language) on Windows.
+    It downloads the latest version, extracts it, builds Vlang if necessary,
+    and adds the executable to the system path.
+
+.PARAMETER version
+    The version to install (default: "latest"). If "latest" is specified,
+    the latest stable version is used.
+
+.PARAMETER installDir
+    The directory where Vlang will be installed.
+    Default: `$env:USERPROFILE\vlang`.
+
+.PARAMETER force
+    Forces the installation even if the specified version is already installed.
+
+.PARAMETER quiet
+    Suppresses detailed log output.
+
+.PARAMETER dryRun
+    Displays what would be done without actually performing the actions.
+
+.PARAMETER check
+    Checks if Vlang is already installed and displays its version.
+
+.PARAMETER update
+    Updates Vlang only if a newer version is available.
+
+.PARAMETER link
+    Creates a symbolic link for the executable after installation.
+
+.PARAMETER noLink
+    Does not create a symbolic link for the executable after installation.
+
+#>
+
 
 param (
     [string]$version = "latest",
@@ -12,6 +53,7 @@ param (
     [switch]$noLink
 )
 
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 
@@ -20,6 +62,7 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     Write-Warning "⚠️ This script must be run as Administrator!"
     exit 1
 }
+
 
 function Write-Log {
     param (
@@ -31,6 +74,7 @@ function Write-Log {
     }
 }
 
+
 # Get the latest version from GitHub API
 function Get-LatestVersion {
     $url = "https://api.github.com/repos/vlang/v/releases/latest"
@@ -41,6 +85,7 @@ function Get-LatestVersion {
         return "latest"
     }
 }
+
 
 # Download V from the provided URL
 function Download-Vlang {
@@ -113,6 +158,16 @@ function Update-SystemPath {
     }
 }
 
+function Check-InstalledVersion {
+    $vCmd = Get-Command v -ErrorAction SilentlyContinue
+    if ($vCmd) {
+        Write-Log "✅ V is installed at: $($vCmd.Source)" Green
+        & $vCmd.Source version
+    } else {
+        Write-Log "❌ V is not installed." Red
+    }
+}
+
 # Install Vlang
 function Install-Vlang {
     if ($version -eq "latest") {
@@ -162,25 +217,7 @@ function Install-Vlang {
     Write-Log "✅ Vlang has been installed to $vPath. Restart your terminal to begin using 'v'." Green
 }
 
-# -------- Main Logic --------
-
-$installDir = [System.IO.Path]::GetFullPath($installDir)
-$vPath = Join-Path $installDir "v"
-$vExePath = Join-Path $vPath "v.exe"
-
-if ($check) {
-    $vCmd = Get-Command v -ErrorAction SilentlyContinue
-    if ($vCmd) {
-        Write-Log "✅ V is installed at: $($vCmd.Source)" Green
-        & $vCmd.Source version
-    } else {
-        Write-Log "❌ V is not installed." Red
-    }
-    exit 0
-}
-
-# Handle update option
-if ($update) {
+function Update-Vlang {
     Write-Log "🔄 Running 'v up' to update V..."
     $vCmd = Get-Command v -ErrorAction SilentlyContinue
     if ($vCmd) {
@@ -192,6 +229,23 @@ if ($update) {
     } else {
         Write-Log "❌ V is not installed. Cannot run 'v up'." Red
     }
+}
+
+
+# -------- Main Logic --------
+
+$installDir = [System.IO.Path]::GetFullPath($installDir)
+$vPath = Join-Path $installDir "v"
+$vExePath = Join-Path $vPath "v.exe"
+
+if ($check) {
+    Check-InstalledVersion
+    exit 0
+}
+
+# Handle update option
+if ($update) {
+    Update-Vlang
     exit 0
 }
 
@@ -209,6 +263,7 @@ if ($force) {
     Write-Log "🧨 Force mode enabled — reinstalling Vlang..." Yellow
 }
 
+
 # Check if V is already installed
 $vInstalled = Get-Command v -ErrorAction SilentlyContinue
 if ($vInstalled -and -not $force) {
@@ -220,6 +275,7 @@ if ($vInstalled -and -not $force) {
     }
     exit 0
 }
+
 
 Install-Vlang
 
@@ -235,6 +291,7 @@ if (-not $dryRun) {
     Write-Log "[dry-run] Would run '$vExePath version'" Yellow
 }
 
+
 # Cleanup .vmodules
 $cacheDir = "$env:USERPROFILE\.vmodules"
 if (Test-Path $cacheDir) {
@@ -245,6 +302,7 @@ if (Test-Path $cacheDir) {
         Write-Log "[dry-run] Would delete $cacheDir" Yellow
     }
 }
+
 
 # Add to PowerShell profile
 if (-not ($env:Path -like "*$installDir*")) {

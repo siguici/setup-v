@@ -12,6 +12,12 @@ param (
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
+    [Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Warning "⚠️ This script must be run as Administrator!"
+    exit 1
+}
+
 function Write-Log {
     param (
         [string]$message,

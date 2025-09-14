@@ -24,7 +24,7 @@ function log() {
 }
 
 function error() {
-    echo -e "❌ $@" >&2
+    echo -e "❌ $*" >&2
 }
 
 function get_latest_release() {

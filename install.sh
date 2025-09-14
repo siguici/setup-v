@@ -181,7 +181,6 @@ function validate_tools() {
     done
 }
 
-# Parse args
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         --version) VERSION="$2"; shift ;;

@@ -57,7 +57,6 @@ param (
     [switch]$help
 )
 
-# Show help message
 if ($help -or $args -contains '-?') {
     Write-Host @"
 Vlang Installer Script
@@ -85,12 +84,10 @@ OPTIONS:
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $ErrorActionPreference = "Stop"
 
-# Ensure the script is run as Administrator
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Warning "⚠️ This script must be run as Administrator!"
     exit 1
 }
-
 
 function Write-Log {
     param (
@@ -102,8 +99,6 @@ function Write-Log {
     }
 }
 
-
-# Get the latest version from GitHub API
 function Get-LatestVersion {
     $url = "https://api.github.com/repos/vlang/v/releases/latest"
     try {
@@ -114,8 +109,6 @@ function Get-LatestVersion {
     }
 }
 
-
-# Download V from the provided URL
 function Download-Vlang {
     param (
         [string]$url,
@@ -134,7 +127,6 @@ function Download-Vlang {
     }
 }
 
-# Extract the downloaded V package
 function Extract-Vlang {
     param (
         [string]$archivePath,
@@ -148,7 +140,6 @@ function Extract-Vlang {
     }
 }
 
-# Build V using the make.bat script
 function Build-V {
     param ([string]$path)
     $makePath = Join-Path $path "make.bat"
@@ -162,7 +153,6 @@ function Build-V {
     }
 }
 
-# Create the symlink for the V executable
 function Symlink-V {
     param ([string]$vExePath)
     if ($link -and (Test-Path $vExePath)) {
@@ -175,7 +165,6 @@ function Symlink-V {
     }
 }
 
-# Update the system PATH variable to include Vlang
 function Update-SystemPath {
     param ([string]$vPath)
     Write-Log "➕ Adding V to system PATH..."
@@ -196,7 +185,6 @@ function Check-InstalledVersion {
     }
 }
 
-# Install Vlang
 function Install-Vlang {
     if ($version -eq "latest") {
         Write-Log "🔍 Fetching latest V version..."
@@ -259,9 +247,6 @@ function Update-Vlang {
     }
 }
 
-
-# -------- Main Logic --------
-
 $installDir = [System.IO.Path]::GetFullPath($installDir)
 $vPath = Join-Path $installDir "v"
 $vExePath = Join-Path $vPath "v.exe"
@@ -271,13 +256,11 @@ if ($check) {
     exit 0
 }
 
-# Handle update option
 if ($update) {
     Update-Vlang
     exit 0
 }
 
-# Check if version is already installed
 if ((Test-Path "$installDir\vlang.version") -and (-not $force)) {
     $installedVersion = Get-Content "$installDir\vlang.version"
     if ($installedVersion -eq $version) {
@@ -286,13 +269,10 @@ if ((Test-Path "$installDir\vlang.version") -and (-not $force)) {
     }
 }
 
-# Handle --force
 if ($force) {
     Write-Log "🧨 Force mode enabled — reinstalling Vlang..." Yellow
 }
 
-
-# Check if V is already installed
 $vInstalled = Get-Command v -ErrorAction SilentlyContinue
 if ($vInstalled -and -not $force) {
     Write-Log "✅ V is already installed. Running 'v up'..." Green
@@ -304,10 +284,8 @@ if ($vInstalled -and -not $force) {
     exit 0
 }
 
-
 Install-Vlang
 
-# Post-install: test V
 if (-not $dryRun) {
     try {
         & "$vExePath" version
@@ -319,8 +297,6 @@ if (-not $dryRun) {
     Write-Log "[dry-run] Would run '$vExePath version'" Yellow
 }
 
-
-# Cleanup .vmodules
 $cacheDir = "$env:USERPROFILE\.vmodules"
 if (Test-Path $cacheDir) {
     Write-Log "🧼 Deleting .vmodules cache..."
@@ -331,8 +307,6 @@ if (Test-Path $cacheDir) {
     }
 }
 
-
-# Add to PowerShell profile
 if (-not ($env:Path -like "*$installDir*")) {
     $profilePath = "$env:USERPROFILE\Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1"
     if (-not (Test-Path $profilePath)) {
@@ -343,7 +317,6 @@ if (-not ($env:Path -like "*$installDir*")) {
         }
     }
     if (-not $dryRun) {
-        # Ensure no duplicates in the profile file
         if (-not (Get-Content $profilePath | Select-String -Pattern $installDir)) {
             Add-Content $profilePath "`$env:Path += `";$installDir`""
         }

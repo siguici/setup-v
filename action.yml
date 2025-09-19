@@ -109,33 +109,36 @@ runs:
 
         echo "V_VERSION=$VERSION" >> "$GITHUB_ENV"
 
-    - name: 📥 Clone Vlang repository
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.token }}
-      run: |
-        mkdir -p "${{ inputs.path }}"
-        gh repo clone vlang/v "${{ inputs.path }}" -- --depth=1
-        cd "${{ inputs.path }}"
-        if [[ -n "$V_VERSION" && "$V_VERSION" != "latest" ]]; then
-          git checkout "$V_VERSION"
-        fi
-
-    - name: 🏗️ Build & Install Vlang on Unix
+    - name: 🌐 Install Vlang on Unix
       shell: bash
       if: runner.os != 'Windows'
       run: |
-        cd "${{ inputs.path }}"
-        make
-        ./v symlink
+        chmod +x install.sh
+        ./install.sh --dir "${{ inputs.path }}" --version "$V_VERSION"
 
-    - name: 🏗️ Build & Install Vlang on Windows
-      shell: bash
+    - name: 🌐 Install Vlang on Windows
+      shell: pwsh
       if: runner.os == 'Windows'
       run: |
-        cd "${{ inputs.path }}"
-        ./make.bat
-        ./v.exe symlink
+        Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+        .\install.ps1 -installDir "${{ inputs.path }}" -version $env:V_VERSION
+
+    - name: 🔄 Update V if required
+      shell: bash
+      if: ${{ inputs.update == 'true' && env.V_VERSION != 'latest' }}
+      run: |
+        if v help | grep -q "up"; then
+          v up
+        else
+          echo "⚠️ \`v up\` not available on this version, ignored."
+        fi
+
+    - name: 📦 Install V dependencies
+      shell: bash
+      if: ${{ inputs.install == 'true' }}
+      working-directory: ${{ inputs.cwd }}
+      run: |
+        v install
 
     - name: 🔄 Update V if required
       shell: bash

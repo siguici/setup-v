@@ -16,6 +16,7 @@ HELP=false
 OS_TYPE="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
 TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
 
 function log() {
     if [ "$QUIET" = false ]; then
@@ -70,7 +71,14 @@ function download_vlang() {
     local output="$2"
     log "📥 Downloading V from $url..."
     curl -sL -o "$output" "$url"
-    [[ -f "$output" ]] || { error "Download failed: $output not found!"; exit 1; }
+    curl -sL --retry 3 --retry-delay 5 -o "$output" "$url" || {
+        error "Download failed: $url"
+        exit 1
+    }
+    [[ -f "$output" ]] || {
+        error "$output not found!";
+        exit 1;
+    }
 }
 
 function extract_vlang() {
@@ -92,6 +100,18 @@ function extract_vlang() {
     fi
 }
 
+if [[ -f "$V_DIR/v" ]]; then
+    if [[ "$SKIP_LINK" = false ]]; then
+        log "🔧 Linking V to system path..."
+        if command -v sudo >/dev/null; then
+            sudo "$V_DIR/v" symlink >/dev/null
+        else
+            "$V_DIR/v" symlink >/dev/null
+        fi
+    else
+        log "🚫 Skipping symlink creation (--no-link)"
+    fi
+fi
 function install_vlang() {
     if [[ "$CHECK_ONLY" = true ]]; then
         check_v_installed && exit 0 || exit 1
@@ -207,7 +227,7 @@ USAGE:
 
 OPTIONS:
     --version      Specify version to install (default: latest)
-    --dir          Directory to install Vlang (default: \$HOME/vlang)
+    --dir          Directory to install Vlang (default: \$HOME)
     --force        Force reinstall even if already installed
     --quiet        Suppress log output
     --dry-run      Simulate actions without making changes

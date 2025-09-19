@@ -90,55 +90,21 @@ runs:
       working-directory: ${{ inputs.cwd }}
       run: |
         VERSION="${{ inputs.version || 'latest' }}"
+        echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
-        if [[ -n "${{ inputs.version-file }}" && -f "${{ inputs.version-file }}" ]]; then
-          VERSION=$(cat "${{ inputs.version-file }}" | tr -d '[:space:]')
-          [[ "$VERSION" =~ ^v[0-9] ]] && VERSION=${VERSION:1}
-        fi
-
-        if [[ "${{ inputs.latest }}" == "true" ]]; then
-          VERSION="latest"
-        fi
-
-        if [[ "${{ inputs.stable }}" == "true" && "$VERSION" == "latest" ]]; then
-          VERSION=$(gh api repos/vlang/v/releases/latest --silent | jq -r '.tag_name' | tr -d 'v' || echo "")
-          if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
-            VERSION=$(gh release list --repo vlang/v --limit 1 --json tagName --jq '.[0].tagName' | tr -d 'v' || echo "")
-          fi
-        fi
-
-        echo "V_VERSION=$VERSION" >> "$GITHUB_ENV"
-
-    - name: 🌐 Install Vlang on Unix
+    - name: 📥 Install Vlang on Unix
       shell: bash
       if: runner.os != 'Windows'
       run: |
         chmod +x install.sh
-        ./install.sh --dir "${{ inputs.path }}" --version "$V_VERSION"
+        ./install.sh --dir "${{ inputs.path }}" --version "$VERSION"
 
-    - name: 🌐 Install Vlang on Windows
+    - name: 📥 Install Vlang on Windows
       shell: pwsh
       if: runner.os == 'Windows'
       run: |
         Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-        .\install.ps1 -installDir "${{ inputs.path }}" -version $env:V_VERSION
-
-    - name: 🔄 Update V if required
-      shell: bash
-      if: ${{ inputs.update == 'true' && env.V_VERSION != 'latest' }}
-      run: |
-        if v help | grep -q "up"; then
-          v up
-        else
-          echo "⚠️ \`v up\` not available on this version, ignored."
-        fi
-
-    - name: 📦 Install V dependencies
-      shell: bash
-      if: ${{ inputs.install == 'true' }}
-      working-directory: ${{ inputs.cwd }}
-      run: |
-        v install
+        .\install.ps1 -installDir "${{ inputs.path }}" -version $env:VERSION
 
     - name: 🔄 Update V if required
       shell: bash

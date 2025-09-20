@@ -107,14 +107,24 @@ runs:
       if: runner.os != 'Windows'
       run: |
         chmod +x install.sh
-        sudo ./install.sh --dir "${{ inputs.path }}" --version "$VERSION"
+
+        ARGS="--dir '${{ inputs.path }}' --version '$VERSION'"
+        [[ "${{ inputs.latest }}" == "true" ]] && ARGS="$ARGS --latest"
+        [[ "${{ inputs.update }}" == "true" ]] && ARGS="$ARGS --update"
+
+        ./install.sh $ARGS
 
     - name: 📥 Install Vlang on Windows
       shell: pwsh
       if: runner.os == 'Windows'
       run: |
         Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-        .\install.ps1 -installDir "${{ inputs.path }}" -version $env:VERSION
+
+        $ARGS = "-installDir '${{ inputs.path }}' -version $env:VERSION"
+        if (${{ inputs.latest }} -eq 'true') { $ARGS += " -latest" }
+        if (${{ inputs.update }} -eq 'true') { $ARGS += " -update" }
+
+        .\install.ps1 $ARGS
 
     - name: 🔄 Update V if required
       shell: bash

@@ -130,6 +130,13 @@ runs:
 
         & .\install.ps1 @Params
 
+    - name: 📂 Prepare V modules cache (macOS/Linux)
+      shell: bash
+      if: runner.os != 'Windows' && inputs.install == 'true'
+      run: |
+        mkdir -p ${V_MODULES:-$HOME/.vmodules}/.cache
+        chmod -R 777 ${V_MODULES:-$HOME/.vmodules}
+
     - name: 📦 Install V dependencies
       shell: bash
       if: runner.os != 'Windows' && inputs.install == 'true'

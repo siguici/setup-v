@@ -145,6 +145,7 @@ runs:
     - name: 🔍 Detect Architecture
       id: detect-arch
       shell: bash
+      if: runner.os != 'Windows'
       run: |
         ARCH="${{ inputs.architecture }}"
         if [[ -z "$ARCH" ]]; then
@@ -156,7 +157,31 @@ runs:
         fi
         echo "ARCH=$ARCH" >> "$GITHUB_ENV"
 
+    - name: 🔍 Detect Architecture on Windows
+      id: detect-arch
+      shell: pwsh
+      if: runner.os == 'Windows'
+      run: |
+        $ARCH = if ([string]::IsNullOrEmpty(inputs.architecture)) {
+          switch ([Environment]::Is64BitOperatingSystem) {
+            $true { "amd64" }
+            $false { "x86" }
+          }
+        } else { inputs.architecture }
+
+        Write-Host "ARCH=$ARCH"
+        echo "ARCH=$ARCH" >> $env:GITHUB_ENV
+
     - name: 🔍 Get installed V version
       id: get-version
       shell: bash
+      if: runner.os != 'Windows'
       run: echo "version=$(v -version)" >> "$GITHUB_OUTPUT"
+
+    - name: 🔍 Get installed V version on Windows
+      id: get-version
+      shell: pwsh
+      if: runner.os == 'Windows'
+      run: |
+        $version = v -version
+        echo "version=$version" >> $env:GITHUB_OUTPUT

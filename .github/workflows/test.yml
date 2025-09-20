@@ -24,7 +24,6 @@ jobs:
         with:
           version-file: './.v-version'
           install: true
-          path: "$HOME/v"
           cwd: ./lab
           latest: true
           stable: true

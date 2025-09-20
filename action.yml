@@ -122,8 +122,8 @@ runs:
         Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
         $ARGS = @(
-          "-installDir", "${{ inputs.path }}",
-          "-version", "$env:VERSION"
+          "-version", "$env:VERSION",
+          "-installDir", "${{ inputs.path }}"
         )
         if (${{ inputs.update }} -eq 'true') {
           $ARGS += "-update"

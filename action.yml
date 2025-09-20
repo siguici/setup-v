@@ -121,14 +121,14 @@ runs:
       run: |
         Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
-        $ARGS = "-version $env:VERSION -installDir ${{ inputs.path }}"
-        if (${{ inputs.update }} -eq 'true') {
-          $ARGS += " -update"
-        }
+        $Params = @{}
+        $Params['version'] = $env:VERSION
+        $Params['installDir'] = '${{ inputs.path }}'
+        if (${{ inputs.update }} -eq 'true') { $Params['update'] = $true }
 
-        Write-Host "✅ Arguments for install.ps1: $ARGS"
+        Write-Host "✅ Parameters for install.ps1: $Params"
 
-        & .\install.ps1 $ARGS
+        & .\install.ps1 @Params
 
     - name: 📦 Install V dependencies
       shell: bash

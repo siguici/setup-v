@@ -317,7 +317,7 @@ if (-not ($env:Path -like "*$installDir*")) {
         }
     }
     if (-not $dryRun) {
-        if (-not (Get-Content $profilePath | Select-String -Pattern $installDir)) {
+        if (-not (Get-Content $profilePath | Select-String -Pattern $installDir -SimpleMatch)) {
             Add-Content $profilePath "`$env:Path += `";$installDir`""
         }
     } else {

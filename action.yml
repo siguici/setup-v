@@ -97,7 +97,7 @@ runs:
       if: runner.os != 'Windows'
       run: |
         chmod +x install.sh
-        ./install.sh --dir "${{ inputs.path }}" --version "$VERSION"
+        sudo ./install.sh --dir "${{ inputs.path }}" --version "$VERSION"
 
     - name: 📥 Install Vlang on Windows
       shell: pwsh

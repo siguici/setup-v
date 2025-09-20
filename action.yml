@@ -134,8 +134,16 @@ runs:
       shell: bash
       if: runner.os != 'Windows' && inputs.install == 'true'
       run: |
-        mkdir -p ${V_MODULES:-$HOME/.vmodules}/.cache
-        chmod -R 777 ${V_MODULES:-$HOME/.vmodules}
+        V_BIN="$(which v)"
+        V_DIR="$(dirname "$V_BIN")"
+        VROOT="$(dirname "$V_DIR")"
+        VMODULES="$VROOT/.vmodules"
+
+        echo "📂 Using VMODULES at $VMODULES"
+
+        mkdir -p "$VMODULES/.cache"
+        chmod -R 777 "$VMODULES"
+        echo "VMODULES=$VMODULES" >> "$GITHUB_ENV"
 
     - name: 📦 Install V dependencies
       shell: bash

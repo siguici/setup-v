@@ -82,7 +82,7 @@ runs:
     - name: 🛠️ Prepare the environment
       uses: siguici/setup-env@v0
       with:
-        packages: 'git gh jq'
+        packages: 'git gh jq unzip'
 
     - name: 📌 Determine Vlang Version
       id: determine-version

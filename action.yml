@@ -132,10 +132,15 @@ runs:
 
     - name: 📦 Install V dependencies
       shell: bash
-      if: ${{ inputs.install == 'true' }}
+      if: runner.os != 'Windows' && inputs.install == 'true'
       working-directory: ${{ inputs.cwd }}
-      run: |
-        v install
+      run: v install
+
+    - name: 📦 Install V dependencies
+      shell: pwsh
+      if: runner.os == 'Windows' && inputs.install == 'true'
+      working-directory: ${{ inputs.cwd }}
+      run: v install
 
     - name: 🔍 Detect Architecture
       id: detect-arch

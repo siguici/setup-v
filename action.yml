@@ -134,7 +134,7 @@ runs:
       shell: bash
       if: runner.os != 'Windows' && inputs.install == 'true'
       run: |
-        V_BIN="$(which v)"
+        V_BIN="$(realpath $(which v))"
         V_DIR="$(dirname "$V_BIN")"
         VROOT="$(dirname "$V_DIR")"
         VMODULES="$VROOT/.vmodules"

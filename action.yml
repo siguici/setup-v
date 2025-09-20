@@ -90,6 +90,16 @@ runs:
       working-directory: ${{ inputs.cwd }}
       run: |
         VERSION="${{ inputs.version || 'latest' }}"
+
+        if [[ -n "${{ inputs.version-file }}" && -f "${{ inputs.version-file }}" ]]; then
+          VERSION=$(cat "${{ inputs.version-file }}" | tr -d '[:space:]')
+          [[ "$VERSION" =~ ^v[0-9] ]] && VERSION=${VERSION:1}
+        fi
+
+        if [[ "${{ inputs.latest }}" == "true" ]]; then
+          VERSION="latest"
+        fi
+
         echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
     - name: 📥 Install Vlang on Unix

@@ -22,7 +22,6 @@ jobs:
       - name: Setup Vlang Environment
         uses: ./
         with:
-          version: weekly.2025.11
           version-file: './.v-version'
           install: true
           path: "$HOME/v"

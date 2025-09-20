@@ -108,7 +108,7 @@ runs:
       run: |
         chmod +x install.sh
 
-        ARGS="--dir '${{ inputs.path }}' --version '$VERSION'"
+        ARGS="--dir ${{ inputs.path }} --version $VERSION"
         [[ "${{ inputs.update }}" == "true" ]] && ARGS="$ARGS --update"
 
         ./install.sh $ARGS

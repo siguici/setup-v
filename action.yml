@@ -111,8 +111,6 @@ runs:
         ARGS="--dir ${{ inputs.path }} --version $VERSION --force"
         [[ "${{ inputs.update }}" == "true" ]] && ARGS="$ARGS --update"
 
-        echo "✅ Arguments for install.sh: $ARGS"
-
         ${{ github.action_path }}/install.sh $ARGS
 
     - name: 📥 Install Vlang on Windows
@@ -125,8 +123,6 @@ runs:
         $Params['version'] = $env:VERSION
         $Params['installDir'] = '${{ inputs.path }}'
         if (${{ inputs.update }} -eq 'true') { $Params['update'] = $true }
-
-        Write-Host "✅ Parameters for install.ps1: $Params"
 
         & ${{ github.action_path }}\install.ps1 @Params
 

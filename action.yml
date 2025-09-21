@@ -113,7 +113,7 @@ runs:
 
         echo "✅ Arguments for install.sh: $ARGS"
 
-        ./install.sh $ARGS
+        ${{ github.action_path }}/install.sh $ARGS
 
     - name: 📥 Install Vlang on Windows
       shell: pwsh
@@ -128,7 +128,7 @@ runs:
 
         Write-Host "✅ Parameters for install.ps1: $Params"
 
-        & .\install.ps1 @Params
+        & ${{ github.action_path }}\install.ps1 @Params
 
     - name: 📂 Prepare V modules cache (macOS/Linux)
       shell: bash

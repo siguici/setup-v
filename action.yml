@@ -106,7 +106,7 @@ runs:
       shell: bash
       if: runner.os != 'Windows'
       run: |
-        chmod +x install.sh
+        chmod +x ${{ github.action_path }}/install.sh
 
         ARGS="--dir ${{ inputs.path }} --version $VERSION --force"
         [[ "${{ inputs.update }}" == "true" ]] && ARGS="$ARGS --update"
